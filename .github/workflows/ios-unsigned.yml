@@ -55,10 +55,41 @@ jobs:
       - name: Build unsigned device app
         run: |
           set -euo pipefail
-          WORKSPACE=$(ls ios/*.xcworkspace | head -n 1)
-          SCHEME=$(xcodebuild -list -workspace "$WORKSPACE" -json \
-            | python3 -c "import json,sys; print(json.load(sys.stdin)['workspace']['schemes'][0])")
+          echo "--- ios dir ---"
+          ls -la ios || true
+          echo "--- workspaces ---"
+          find ios -maxdepth 1 -name '*.xcworkspace' -print || true
+          WORKSPACE=""
+          for candidate in ios/*.xcworkspace; do
+            if [ -f "$candidate/contents.xcworkspacedata" ]; then
+              WORKSPACE="$candidate"
+              break
+            fi
+          done
+          if [ -z "$WORKSPACE" ]; then
+            echo "no usable workspace found, falling back to xcodeproj"
+            PROJECT=$(ls -d ios/*.xcodeproj | head -n 1)
+            SCHEME=$(xcodebuild -list -project "$PROJECT" -json \
+              | python3 -c "import json,sys; d=json.load(sys.stdin); print((d.get('project') or {}).get('schemes', ['App'])[0])")
+            echo "project: $PROJECT"
+            echo "scheme:  $SCHEME"
+            xcodebuild \
+              -project "$PROJECT" \
+              -scheme "$SCHEME" \
+              -configuration Release \
+              -sdk iphoneos \
+              -derivedDataPath build \
+              -destination 'generic/platform=iOS' \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGN_IDENTITY="" \
+              DEVELOPMENT_TEAM="" \
+              build
+            exit 0
+          fi
           echo "workspace: $WORKSPACE"
+          SCHEME=$(xcodebuild -list -workspace "$WORKSPACE" -json \
+            | python3 -c "import json,sys; d=json.load(sys.stdin); print((d.get('workspace') or {}).get('schemes', ['App'])[0])")
           echo "scheme:    $SCHEME"
           xcodebuild \
             -workspace "$WORKSPACE" \

@@ -1,0 +1,128 @@
+// 数据模型：与 docs/api.md、前端 src/types/models.ts 一一对应。
+// 已在本地 PostgreSQL 17 上执行过 `prisma migrate dev`，并可用 `npm run seed` 灌入演示数据。
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ActivityType {
+  competition
+  research
+  innovation
+  practice
+  sports
+  volunteer
+  other
+}
+
+enum ContactType {
+  qq
+  wechat
+  phone
+}
+
+enum RecruitStatus {
+  recruiting
+  full
+  ended
+  cancelled
+}
+
+enum JoinStatus {
+  active
+  left
+  removed
+}
+
+model User {
+  id        String   @id @default(cuid())
+  realName  String   @map("real_name")
+  studentId String   @unique @map("student_id")
+  college   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  recruitments  Recruitment[]  @relation("Publisher")
+  joins         JoinRecord[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+model Recruitment {
+  id              String        @id @default(cuid())
+  title           String
+  college         String
+  activityType    ActivityType  @map("activity_type")
+  neededCount     Int           @map("needed_count")
+  joinedCount     Int           @default(0) @map("joined_count")
+  requirements    String
+  contact         String
+  contactType     ContactType   @default(wechat) @map("contact_type")
+  activityUrl     String        @map("activity_url")
+  extra           String        @default("")
+  // 接口层已改为必填；列保持可空以兼容早期数据
+  deadline        DateTime?
+  publisherId     String        @map("publisher_id")
+  publisherName   String        @map("publisher_name")
+  publisherCollege String       @map("publisher_college")
+  status          RecruitStatus @default(recruiting)
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  publisher     User           @relation("Publisher", fields: [publisherId], references: [id])
+  joins         JoinRecord[]
+  notifications Notification[]
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([publisherId, status])
+  @@map("recruitments")
+}
+
+model JoinRecord {
+  id            String     @id @default(cuid())
+  recruitmentId String     @map("recruitment_id")
+  userId        String     @map("user_id")
+  realName      String     @map("real_name")
+  studentId     String     @map("student_id")
+  college       String
+  contact       String
+  contactType   ContactType @default(wechat) @map("contact_type")
+  joinedAt      DateTime   @default(now()) @map("joined_at")
+  status        JoinStatus @default(active)
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  recruitment Recruitment @relation(fields: [recruitmentId], references: [id])
+  user        User        @relation(fields: [userId], references: [id])
+
+  // 同一用户对同一招募只保留一条记录；退出后重新加入时复用并改回 active。
+  @@unique([recruitmentId, userId])
+  @@index([recruitmentId, status])
+  @@map("join_records")
+}
+
+model Notification {
+  id                String   @id @default(cuid())
+  recipientUserId   String   @map("recipient_user_id")
+  recruitmentId     String   @map("recruitment_id")
+  recruitmentTitle  String   @map("recruitment_title")
+  joinerUserId      String   @map("joiner_user_id")
+  joinerName        String   @map("joiner_name")
+  joinerStudentId   String   @map("joiner_student_id")
+  joinerCollege     String   @map("joiner_college")
+  joinerContact     String   @map("joiner_contact")
+  joinerContactType ContactType @default(wechat) @map("joiner_contact_type")
+  content           String
+  read              Boolean  @default(false)
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  recipient   User        @relation(fields: [recipientUserId], references: [id])
+  recruitment Recruitment @relation(fields: [recruitmentId], references: [id])
+
+  @@index([recipientUserId, read, createdAt(sort: Desc)])
+  @@map("notifications")
+}

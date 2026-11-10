@@ -107,7 +107,13 @@ jobs:
       - name: Package ipa
         run: |
           set -euo pipefail
-          APP=$(ls build/Build/Products/Release-iphoneos/*.app | head -n 1)
+          echo "--- products ---"
+          ls -la build/Build/Products/Release-iphoneos
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -type d -name '*.app' -print -quit)
+          if [ -z "$APP" ]; then
+            echo "no .app bundle produced"
+            exit 1
+          fi
           echo "app: $APP"
           EXEC=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$APP/Info.plist")
           BIN="$APP/$EXEC"

@@ -384,6 +384,19 @@ iOS 原生包只能在 macOS + Xcode 或 EAS 云构建上产出，Windows 下 `n
 2. **EAS 云构建**：`npx eas-cli@latest login --device` → `npx eas-cli@latest build -p ios --profile preview`（需要 Expo 账号，装真机还需 Apple 账号签名）；
 3. **macOS 本地**：`npx expo prebuild -p ios && npx expo run:ios`。
 
+### iOS 无签名 .ipa（GitHub Actions 已跑通）
+
+源码已推到 <https://github.com/mcliu-Nya/campus-team>（Public）。在 Actions 里手动触发 **iOS unsigned ipa** → Run workflow，约 12 分钟产出未签名安装包：
+
+| 项目 | 值 |
+| --- | --- |
+| 产物 | `campus-team-unsigned.ipa`（约 13.6 MB，`Payload/app.app`，无 `_CodeSignature`） |
+| 校验 | `com.campus.team` · `1.0.2 (3)` · `MinimumOSVersion 16.4` · 内联 `http://139.196.169.146/api` |
+| 本机副本 | `build/campus-team-1.0.2-unsigned.ipa`（SHA-256 `60ABFAE4…696E`） |
+| 安装 | Windows 上用 [Sideloadly](https://sideloadly.io/) + Apple ID 现签现装（免费账号 7 天有效） |
+
+> 私有仓库跑 macOS runner 需要绑定付款方式，公开仓库免费；`runs-on` 必须用 `macos-latest`（`macos-14` 已下线，任务会被秒取消）。细节见 [`docs/ios.md`](docs/ios.md) 的「路径四」。
+
 
 ### 本地直接构建 APK（连本机后端）
 

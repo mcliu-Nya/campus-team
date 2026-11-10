@@ -75,6 +75,23 @@ npx expo run:ios            # 真机或模拟器直接运行
 
 仓库已带好工作流 [`.github/workflows/ios-unsigned.yml`](../.github/workflows/ios-unsigned.yml)：在 GitHub 上手动触发（Actions → iOS unsigned ipa → Run workflow），跑完在 Artifacts 下载 `campus-team-unsigned-ipa`。
 
+**实际跑通记录（2026-11-10）**
+
+- 仓库：<https://github.com/mcliu-Nya/campus-team>（Public）
+- 运行：`iOS unsigned ipa` → `Run workflow`，默认 `api_base_url = http://139.196.169.146/api`
+- 结果：约 12 分钟完成；artifact 内 `campus-team-unsigned.ipa` 约 **13.6 MB**，SHA-256 `60ABFAE4C0E003FCDEC3C994ECA0DA7F4F43A6AE4200F593F67851436706696E`
+- 包体校验：`Payload/app.app`、无 `_CodeSignature`、`CFBundleIdentifier=com.campus.team`、`1.0.2 (3)`、`MinimumOSVersion=16.4`、`main.jsbundle` 3.27 MB 且内联 `139.196.169.146`
+- 本地产物：`build/campus-team-1.0.2-unsigned.ipa`
+
+踩过的两个坑：
+
+| 现象 | 原因 | 处理 |
+| --- | --- | --- |
+| 触发的任务 1 秒内变成 `cancelled`，没有任何日志 | `runs-on: macos-14` 这个镜像标签已下线 | 改成 `macos-latest`（实测可用） |
+| `xcodebuild: error: 'contents.xcworkspacedata' does not exist` | `pod install` 生成的 workspace 名称不固定，`ls ios/*.xcworkspace` 取到了不可用目录 | 用 `find` 逐个检查 `contents.xcworkspacedata`，找不到就退回 `-project ios/*.xcodeproj` |
+
+> 私有仓库使用 macOS runner 需要账户绑定付款方式（否则任务会被直接取消）；公开仓库免费。这也是本仓库设为 Public 的原因。
+
 ```bash
 # 工作流核心步骤（macOS）
 npx expo prebuild -p ios --no-install
@@ -89,7 +106,7 @@ zip -qry campus-team-unsigned.ipa Payload
 安装（Windows，无需开发者账号）：
 
 1. 装 [Sideloadly](https://sideloadly.io/) 与 iTunes（提供 Apple 设备驱动）；
-2. iPhone 用数据线连电脑，Sideloadly 里拖入 `campus-team-unsigned.ipa`，填 Apple ID；
+2. iPhone 用数据线连电脑，Sideloadly 里拖入 `campus-team-1.0.2-unsigned.ipa`，填 Apple ID；
 3. 首次安装后到「设置 → 通用 → VPN与设备管理」信任证书；
 4. 免费 Apple ID 签的 App **7 天过期**，到期重新签名即可；付费账号可签 1 年。
 
